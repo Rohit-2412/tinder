@@ -1,11 +1,12 @@
 import { AntDesign, Entypo, Ionicons } from '@expo/vector-icons'
 import { Image, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { collection, doc, getDocs, onSnapshot, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 
 import { StatusBar } from 'expo-status-bar';
 import Swiper from 'react-native-deck-swiper'
 import { db } from '../firebase';
+import generateId from '../lib/generateId';
 import useAuth from '../hooks/useAuth';
 import { useNavigation } from '@react-navigation/native'
 
@@ -26,7 +27,6 @@ const HomeScreen = () => {
     // loading all profiles from firestore
     useEffect(() => {
         let unsub;
-
         const fetchCards = async () => {
             const passes = await getDocs(collection(db, "users", user.uid, "passes")).then(
                 (snapshot) => snapshot.docs.map((doc) => doc.id)
@@ -72,10 +72,32 @@ const HomeScreen = () => {
         if (!profiles[cardIndex]) return;
 
         const userSwiped = profiles[cardIndex];
+        const loggedInUser = await (await getDoc(doc(db, "users", user.uid))).data();
 
-        setDoc(doc(db, "users", user.uid, "matches", userSwiped.id),
-            userSwiped
-        ).catch((error) => alert(error.message));
+        // check if user swiped right on the other user
+        getDoc(doc(db, 'users', userSwiped.id, 'swipes', user.uid)).then((docSnapshot) => {
+            if (docSnapshot.exists()) {
+                // console.log("Congrats, your matched with " + userSwiped.displayName + "!")
+                // if the other user swiped right on the logged in user, then it's a match
+                setDoc(doc(db, "users", user.uid, "swipes", userSwiped.id), userSwiped);
+
+                // create a MATCH
+                setDoc(doc(db, 'matches', generateId(user.uid, userSwiped.id)), {
+                    users: {
+                        [user.uid]: { loggedInUser },
+                        [userSwiped.id]: { userSwiped }
+                    },
+                    usersMatched: [user.uid, userSwiped.id],
+                    timestamp: serverTimestamp()
+                });
+
+                navigation.navigate('Match', { loggedInUser, userSwiped })
+            }
+            else {
+                // console.log("You swiped right on " + userSwiped.displayName + "!")
+                setDoc(doc(db, "users", user.uid, "swipes", userSwiped.id), userSwiped);
+            }
+        })
     }
     return (
         <SafeAreaView className="flex-1">

@@ -1,6 +1,7 @@
 import { Button, ImageBackground, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native'
 import React, { useLayoutEffect } from 'react'
 
+import { StatusBar } from 'expo-status-bar';
 import useAuth from '../hooks/useAuth'
 import { useNavigation } from '@react-navigation/native';
 
@@ -16,6 +17,7 @@ const LoginScreen = () => {
 
     return (
         <SafeAreaView className="flex-1">
+            <StatusBar style="auto" />
             {Platform.OS === "android" && <View className="my-5" />}
             <ImageBackground
                 resizeMode='cover'

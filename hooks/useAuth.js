@@ -14,9 +14,9 @@ const AuthContext = createContext({});
 
 const config = {
     androidClientId:
-        "1085887580219-388eg6qrvkv38frvqnq8efkohgd3pt02.apps.googleusercontent.com",
+        process.env.ANDROID_CLIENT_ID,
     iosClientId:
-        "1085887580219-v9nhu684eqer5t7q3janbpiggg2ql7t9.apps.googleusercontent.com",
+        process.env.IOS_CLIENT_ID,
     expoClientId:
         "1085887580219-jschvne39r36tapl36ubqmk3ktgve2r4.apps.googleusercontent.com",
     scopes: ["profile", "email"],
@@ -71,16 +71,14 @@ export const AuthProvider = ({ children }) => {
     const memoedValue = useMemo(() => ({
         user,
         signInWithGoogle,
+        setLoading,
         loading,
         logout
     }), [user, loading])
 
     return (
         <AuthContext.Provider
-            value={
-                memoedValue
-            }
-        >
+            value={memoedValue}>
             {children}
         </AuthContext.Provider>
     );
