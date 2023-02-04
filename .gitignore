@@ -13,3 +13,6 @@ web-build/
 # macOS
 .DS_Store
 .env.local
+google-services.json
+GoogleService-Info.plist
+client_secret_1085887580219-jschvne39r36tapl36ubqmk3ktgve2r4.apps.googleusercontent.com.json
