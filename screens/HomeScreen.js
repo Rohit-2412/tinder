@@ -1,45 +1,85 @@
 import { AntDesign, Entypo, Ionicons } from '@expo/vector-icons'
-import { Button, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useLayoutEffect, useRef } from 'react'
+import { Image, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { collection, doc, getDocs, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 
+import { StatusBar } from 'expo-status-bar';
 import Swiper from 'react-native-deck-swiper'
+import { db } from '../firebase';
 import useAuth from '../hooks/useAuth';
 import { useNavigation } from '@react-navigation/native'
-
-const DUMMY_DATA = [
-    {
-        id: 1,
-        firstName: 'Elon',
-        lastName: 'Musk',
-        job: 'Software Engineer',
-        age: 25,
-        photoURL: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Elon_Musk_Royal_Society_%28crop2%29.jpg/1200px-Elon_Musk_Royal_Society_%28crop2%29.jpg'
-    },
-    {
-        id: 2,
-        firstName: 'Jeff',
-        lastName: 'Bezos',
-        job: 'Software Engineer',
-        age: 35,
-        photoURL: 'https://pbs.twimg.com/profile_images/1591558315254890500/ETIHb4Nl_400x400.jpg'
-    },
-    {
-        id: 3,
-        firstName: 'John',
-        lastName: 'Doe',
-        job: 'Developer',
-        age: 45,
-        photoURL: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?cs=srgb&dl=pexels-italo-melo-2379005.jpg&fm=jpg'
-    }
-]
 
 const HomeScreen = () => {
     const navigation = useNavigation();
     const { user, logout } = useAuth();
+    const [profiles, setProfiles] = useState([null])
     const swipeRef = useRef(null);
 
+    useLayoutEffect(() =>
+        onSnapshot(doc(db, "users", user.uid), (snapshot) => {
+            if (!snapshot.exists()) {
+                navigation.navigate('Modal')
+            }
+        })
+        , [])
+
+    // loading all profiles from firestore
+    useEffect(() => {
+        let unsub;
+
+        const fetchCards = async () => {
+            const passes = await getDocs(collection(db, "users", user.uid, "passes")).then(
+                (snapshot) => snapshot.docs.map((doc) => doc.id)
+            )
+
+            const swipes = await getDocs(collection(db, "users", user.uid, "swipes")).then(
+                (snapshot) => snapshot.docs.map((doc) => doc.id)
+            )
+
+            const passedUserIds = passes.length > 0 ? passes : ['test'];
+            const swipedUserIds = swipes.length > 0 ? swipes : ['test'];
+
+            unsub = onSnapshot(
+                query(collection(db, 'users'),
+                    where('id', 'not-in', [...passedUserIds, ...swipedUserIds])),
+                snapshot => {
+                    const data = snapshot.docs.
+                        filter(doc => doc.id !== user.uid).
+                        map(doc => ({ id: doc.id, ...doc.data(), }))
+                    setProfiles(data)
+                })
+        }
+
+        fetchCards();
+        return unsub;
+    }, [])
+
+    // swipe left
+    const swipeLeft = async (cardIndex) => {
+        if (!profiles[cardIndex]) {
+            return
+        }
+
+        const userSwiped = profiles[cardIndex];
+
+        setDoc(doc(db, "users", user.uid, "passes", userSwiped.id),
+            userSwiped
+        ).catch((error) => alert(error.message));
+    }
+
+    // swipe right
+    const swipeRight = async (cardIndex) => {
+        if (!profiles[cardIndex]) return;
+
+        const userSwiped = profiles[cardIndex];
+
+        setDoc(doc(db, "users", user.uid, "matches", userSwiped.id),
+            userSwiped
+        ).catch((error) => alert(error.message));
+    }
     return (
         <SafeAreaView className="flex-1">
+            <StatusBar style="auto" />
             {Platform.OS === "android" && <View className="my-5" />}
             {/* header */}
             <View className="flex-row items-center justify-between px-5">
@@ -68,7 +108,7 @@ const HomeScreen = () => {
                 <Swiper
                     ref={swipeRef}
                     containerStyle={{ backgroundColor: 'transparent' }}
-                    cards={DUMMY_DATA}
+                    cards={profiles}
                     stackSize={5}
                     cardIndex={0}
                     verticalSwipe={false}
@@ -92,22 +132,31 @@ const HomeScreen = () => {
                             }
                         }
                     }}
-                    onSwipedLeft={() => { }}
-                    onSwipedRight={() => { }}
+                    onSwipedLeft={(cardIndex) => { swipeLeft(cardIndex) }}
+                    onSwipedRight={(cardIndex) => { swipeRight(cardIndex) }}
                     animateCardOpacity
-                    renderCard={card => (
+                    renderCard={card => card ? (
                         <View key={card.id} className="bg-white h-3/4 rounded-xl relative">
-                            <Image source={{ uri: card.photoURL }} className="h-full w-full rounded-xl absolute top-0" />
+                            <Image source={{ uri: card.imageUrl }} className="h-full w-full rounded-xl absolute top-0" />
 
                             <View className="bg-white w-full h-20 absolute bottom-0 justify-between px-6 py-2 rounded-b-xl items-center flex-row" style={styles.cardShadow}>
                                 <View>
-                                    <Text className="text-2xl font-bold">{card.firstName} {card.lastName}</Text>
+                                    <Text className="text-xl font-bold">{card.displayName}</Text>
 
-                                    <Text className="text-gray-500">{card.job} </Text>
+                                    <Text className="text-gray-500">{card.occupation} </Text>
                                 </View>
 
                                 <Text className="text-2xl font-bold">{card.age}</Text>
                             </View>
+                        </View>
+                    ) : (
+                        <View className="relative bg-white h-3/4 rounded-xl justify-center items-center" style={styles.cardShadow}>
+                            <Text className="font-bold pb-5">No more profiles</Text>
+                            <Image
+                                className="h-20 w-full"
+                                style={{ height: 100, width: 100 }}
+                                source={{ uri: "https://links.papareact.com/6gb" }}
+                            />
                         </View>
                     )}
                 />

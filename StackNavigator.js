@@ -1,5 +1,6 @@
 import ChatScreen from './screens/ChatScreen';
 import HomeScreen from './screens/HomeScreen';
+import { LogBox } from 'react-native';
 import LoginScreen from './screens/LoginScreen';
 import ModalScreen from './screens/ModalScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
