@@ -84,8 +84,8 @@ const HomeScreen = () => {
                 // create a MATCH
                 setDoc(doc(db, 'matches', generateId(user.uid, userSwiped.id)), {
                     users: {
-                        [user.uid]: { loggedInUser },
-                        [userSwiped.id]: { userSwiped }
+                        [user.uid]: loggedInUser,
+                        [userSwiped.id]: userSwiped
                     },
                     usersMatched: [user.uid, userSwiped.id],
                     timestamp: serverTimestamp()
